@@ -1,0 +1,24 @@
+{
+  "name": "tttest",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KimTaebin-ai/tttest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KimTaebin-ai/tttest/issues"
+  },
+  "homepage": "https://github.com/KimTaebin-ai/tttest#readme",
+  "dependencies": {
+    "fastify": "^5.4.0"
+  }
+}
