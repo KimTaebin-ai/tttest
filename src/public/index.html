@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO 채팅 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 400px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #4a5568;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .username-section {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .username-section input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f7fafc;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.own {
+            background: #4299e1;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.other {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .message.system {
+            background: #48bb78;
+            color: white;
+            text-align: center;
+            margin: 0 auto;
+            font-size: 12px;
+        }
+
+        .message.error {
+            background: #f56565;
+            color: white;
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .message-info {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #718096;
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input-container button {
+            padding: 10px 20px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .input-container button:hover {
+            background: #3182ce;
+        }
+
+        .connection-status {
+            padding: 5px 10px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: #48bb78;
+            color: white;
+        }
+
+        .disconnected {
+            background: #f56565;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>Socket.IO 채팅</h2>
+        <div id="connectionStatus" class="connection-status disconnected">연결 중...</div>
+    </div>
+
+    <div class="username-section">
+        <input type="text" id="usernameInput" placeholder="사용자 이름을 입력하세요" maxlength="20">
+    </div>
+
+    <div class="chat-messages" id="messages"></div>
+
+    <div id="typingIndicator" class="typing-indicator" style="display: none;"></div>
+
+    <div class="chat-input">
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." maxlength="500">
+            <button id="sendButton">전송</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentUsername = 'Anonymous';
+    let typingTimer = null;
+
+    const messagesDiv = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const usernameInput = document.getElementById('usernameInput');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const typingIndicator = document.getElementById('typingIndicator');
+
+    // 연결 상태 표시
+    socket.on('connect', () => {
+        connectionStatus.textContent = '연결됨';
+        connectionStatus.className = 'connection-status connected';
+        console.log('Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+        connectionStatus.textContent = '연결 끊김';
+        connectionStatus.className = 'connection-status disconnected';
+        console.log('Disconnected from server');
+    });
+
+    // 메시지 표시 함수
+    function displayMessage(message, type = 'other') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+
+        if (type === 'system' || type === 'error') {
+            messageDiv.textContent = message.message || message;
+        } else {
+            messageDiv.innerHTML = `
+                    <div><strong>${message.username || 'Anonymous'}</strong>: ${message.text}</div>
+                    <div class="message-info">${new Date(message.time).toLocaleTimeString()}</div>
+                `;
+        }
+
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // 이벤트 리스너들
+    socket.on('chat:welcome', (data) => {
+        displayMessage(data, 'system');
+    });
+
+    socket.on('chat:user-joined', (data) => {
+        displayMessage(data, 'system');
+    });
+
+    socket.on('chat:user-left', (data) => {
+        displayMessage(data, 'system');
+    });
+
+    socket.on('chat:message', (data) => {
+        const messageType = data.id === socket.id ? 'own' : 'other';
+        displayMessage(data, messageType);
+    });
+
+    socket.on('chat:error', (data) => {
+        displayMessage(data, 'error');
+    });
+
+    socket.on('chat:typing', (data) => {
+        if (data.isTyping) {
+            typingIndicator.textContent = `${data.username}님이 입력 중...`;
+            typingIndicator.style.display = 'block';
+        } else {
+            typingIndicator.style.display = 'none';
+        }
+    });
+
+    socket.on('chat:username-set', (data) => {
+        currentUsername = data.username;
+        displayMessage({ message: `사용자 이름이 '${data.username}'으로 설정되었습니다.` }, 'system');
+    });
+
+    // 메시지 전송
+    function sendMessage() {
+        const text = messageInput.value.trim();
+        if (text) {
+            socket.emit('chat:message', {
+                text: text,
+                username: currentUsername
+            });
+            messageInput.value = '';
+            socket.emit('chat:typing', { username: currentUsername, isTyping: false });
+        }
+    }
+
+    // 이벤트 리스너
+    sendButton.addEventListener('click', sendMessage);
+
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    // 타이핑 감지
+    messageInput.addEventListener('input', () => {
+        socket.emit('chat:typing', { username: currentUsername, isTyping: true });
+
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            socket.emit('chat:typing', { username: currentUsername, isTyping: false });
+        }, 1000);
+    });
+
+    // 사용자 이름 설정
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('chat:set-username', { username: username });
+                usernameInput.value = '';
+            }
+        }
+    });
+</script>
+</body>
+</html>

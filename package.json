@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,11 @@
   },
   "homepage": "https://github.com/KimTaebin-ai/tttest#readme",
   "dependencies": {
-    "fastify": "^5.4.0"
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/static": "^8.2.0",
+    "dotenv": "^17.0.1",
+    "fastify": "^5.4.0",
+    "fastify-plugin": "^5.0.1",
+    "socket.io": "^4.8.1"
   }
 }
